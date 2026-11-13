@@ -5,6 +5,7 @@ const requestSchema = new mongoose.Schema(
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     status: { type: String, enum: ["pending", "approved", "rejected"], default: "pending" },
     criteria: {
+      city: { type: String, default: "" },
       checkIn: { type: String, required: true },
       checkOut: { type: String, required: true },
       budget: { type: Number, required: true },

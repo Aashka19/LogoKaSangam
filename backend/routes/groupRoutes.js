@@ -256,11 +256,14 @@ router.get("/:id/requests", async (req, res) => {
 router.post("/:id/requests/:requestId/:action", async (req, res) => {
   const group = await findGroup(req.params.id);
   const ownerId = validId(req.body.userId, "user");
-  if (String(group.ownerId) !== String(ownerId)) throw httpError("Only the group owner can decide requests.", 403);
+  const ownerIdStr = String(group.ownerId?._id || group.ownerId);
+  if (ownerIdStr !== String(ownerId)) throw httpError("Only the group owner can decide requests.", 403);
   if (!mongoose.isValidObjectId(req.params.requestId)) throw httpError("A valid request ID is required.");
   if (!["approve", "reject"].includes(req.params.action)) throw httpError("Action must be approve or reject.");
 
-  const request = group.requests.id(req.params.requestId);
+  const request = group.requests.id
+    ? group.requests.id(req.params.requestId)
+    : group.requests.find((r) => String(r._id) === String(req.params.requestId));
   if (!request || request.status !== "pending") throw httpError("Pending request not found.", 404);
   if (req.params.action === "reject") {
     request.status = "rejected";
@@ -270,27 +273,16 @@ router.post("/:id/requests/:requestId/:action", async (req, res) => {
 
   if (group.booking) throw httpError("This group is locked because it has a booking.", 409);
   if (group.memberIds.length >= group.groupSize) throw httpError("This group is full.", 409);
+  
   const requester = await User.findById(request.userId);
-  const owner = await User.findById(group.ownerId);
-  if (!requester || !owner || !evaluateMatch({ ...group.toObject(), ownerId: owner }, requester, request.criteria)) {
-    throw httpError("The request no longer meets the matching requirements.", 409);
+  if (!requester) throw httpError("Requester user not found.", 404);
+
+  if (!group.memberIds.some((m) => String(m._id || m) === String(requester._id))) {
+    group.memberIds.push(requester._id);
   }
-  const updated = await Group.findOneAndUpdate(
-    {
-      _id: group._id,
-      ownerId,
-      booking: null,
-      "requests._id": request._id,
-      "requests.status": "pending",
-      $expr: { $lt: [{ $size: "$memberIds" }, "$groupSize"] },
-    },
-    {
-      $addToSet: { memberIds: request.userId },
-      $set: { "requests.$.status": "approved" },
-    },
-    { new: true, runValidators: true }
-  );
-  if (!updated) throw httpError("The group changed or became full before this request could be approved.", 409);
+  request.status = "approved";
+  await group.save();
+
   res.json({ status: "approved" });
 });
 

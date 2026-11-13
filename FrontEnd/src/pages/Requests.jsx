@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, useCatalog, useLoad, label, val } from "../api.js";
 
@@ -5,14 +6,20 @@ export default function Requests({ user }) {
   const { id } = useParams();
   const { data, loading, error, reload } = useLoad(() => api.pending(id, user.id), [id, user.id]);
   const { interests, error: catalogError } = useCatalog();
+  const [busyId, setBusyId] = useState("");
+  const [actionError, setActionError] = useState("");
   const list = data?.requests || data || [];
 
   const decide = async (rid, action) => {
+    setBusyId(rid);
+    setActionError("");
     try {
       await api.decide(id, rid, action, user.id);
       reload();
     } catch (e) {
-      alert(e.message);
+      setActionError(e.message);
+    } finally {
+      setBusyId("");
     }
   };
 
@@ -27,6 +34,7 @@ export default function Requests({ user }) {
       </div>
       {loading && <p className="muted">Loading…</p>}
       {error && <p className="error">{error}</p>}
+      {actionError && <p className="error">{actionError}</p>}
       {catalogError && <p className="error">{catalogError}</p>}
       {!loading && !error && list.length === 0 && <p className="muted">No pending requests.</p>}
       {list.map((r) => (
@@ -42,8 +50,20 @@ export default function Requests({ user }) {
             }).join(", ")}</p>
           )}
           <div className="row">
-            <button className="btn" onClick={() => decide(r.id, "approve")}>Approve</button>
-            <button className="btn ghost" onClick={() => decide(r.id, "reject")}>Reject</button>
+            <button
+              className="btn"
+              disabled={busyId === r.id}
+              onClick={() => decide(r.id, "approve")}
+            >
+              {busyId === r.id ? "Approving…" : "Approve"}
+            </button>
+            <button
+              className="btn ghost"
+              disabled={busyId === r.id}
+              onClick={() => decide(r.id, "reject")}
+            >
+              Reject
+            </button>
           </div>
         </article>
       ))}
