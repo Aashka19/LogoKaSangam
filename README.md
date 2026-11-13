@@ -84,22 +84,6 @@ npm run seed
 
 ---
 
-## Features & Acceptance Criteria Matrix
-
-| ID | Feature | Specification | Status |
-|---|---|---|:---:|
-| **M1** | Sign up flow | Passwordless profile: name, gender, origin city, age, interests, companion preference; persists across refresh & restart | Complete |
-| **M2** | Group owner | Create group: 5 cities, April 1–20 2027, 1–4 members, budget, proposed itinerary, tags | Complete |
-| **M3** | Traveller search | Search: home city, destination, check-in/out, interests, budget, gender preference | Complete |
-| **M4** | See matches | Evaluates all 6 matching rules; displays group name, dates, city, members count, host name, compatibility reasons | Complete |
-| **M5** | Accept or decline | Seekers submit interest; creator sees pending requests with notification badges; approve/reject persists | Complete |
-| **M6** | Common Group Page | Shared hotel search, per-member cost display (`price ÷ memberCount`), room saving & comparison, booking modal confirmation | Complete |
-| **G1** | Interests & Composition Filter | Filter search results by shared interests and group gender composition (Female only, Male only, Mixed) | Complete |
-| **G2** | Member profile pages | Profile view with interests, home city, age, companion preferences, and group memberships | Complete |
-| **S1** | Group chat | Real-time chat messaging on common group page for trip coordination | Complete |
-
----
-
 ## Group Matching Engine (6 Rules)
 
 Every candidate group must satisfy all 6 rules:
@@ -116,33 +100,6 @@ $$\text{Score} = (\text{sharedInterests} \times 100) + (\text{overlapNights} \ti
 - **Primary**: Higher overall compatibility score.
 - **Tie-breaker 1**: Earliest check-in date (`checkIn.localeCompare`).
 - **Tie-breaker 2**: Larger target group size (accommodates more companions).
-
----
-
-## API Contract
-
-All endpoints are prefixed with `/api`:
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/api/catalog/cities` | Supported destinations (Tokyo, Kyoto, Osaka, Dubai, Abu Dhabi) |
-| `GET` | `/api/catalog/interests` | All 16 interest IDs and labels |
-| `POST` | `/api/users` | Register a new traveller profile |
-| `GET` | `/api/users/:userId` | Profile details, interests, and joined groups |
-| `GET` | `/api/users/:userId/groups` | Groups where user is owner or approved member |
-| `GET` | `/api/users/:userId/pending-count` | Aggregate count of pending requests for owner |
-| `POST` | `/api/groups` | Create a new group trip |
-| `GET` | `/api/groups/:groupId?userId=...` | Group details & itinerary (accessible to seekers and members) |
-| `POST` | `/api/matches/search` | Search and score matching groups using all 6 rules |
-| `POST` | `/api/groups/:groupId/interest` | Express interest to join a group |
-| `GET` | `/api/groups/:groupId/requests?userId=...` | Owner view of pending applicant requests |
-| `POST` | `/api/groups/:groupId/requests/:requestId/:action` | Owner approves or rejects a request (`approve`/`reject`) |
-| `GET` | `/api/groups/:groupId/hotels?checkIn=...&checkOut=...&userId=...` | Hotel availability and room prices for group size |
-| `POST` | `/api/groups/:groupId/saved-options` | Save a room option to group shortlist |
-| `DELETE` | `/api/groups/:groupId/saved-options/:optionId?userId=...` | Remove a shortlisted room option |
-| `POST` | `/api/groups/:groupId/book` | Finalize group consensus booking & lock group |
-| `GET` | `/api/groups/:groupId/messages?userId=...` | Chat messages for the group |
-| `POST` | `/api/groups/:groupId/messages` | Post a chat message |
 
 ---
 
