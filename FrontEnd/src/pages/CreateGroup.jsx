@@ -6,7 +6,16 @@ import { Chips } from "./SignUp.jsx";
 export default function CreateGroup({ user }) {
   const nav = useNavigate();
   const { cities, interests, error: catalogError } = useCatalog();
-  const [f, setF] = useState({ name: "", city: "", checkIn: "", checkOut: "", groupSize: 3, budget: "", interests: [], itinerary: "" });
+  const [f, setF] = useState({
+    name: "",
+    city: "",
+    checkIn: "",
+    checkOut: "",
+    groupSize: 3,
+    budget: "",
+    interests: user?.interests || [],
+    itinerary: "",
+  });
   const [error, setError] = useState("");
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 

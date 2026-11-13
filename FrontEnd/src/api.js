@@ -18,6 +18,7 @@ const qs = (o) => new URLSearchParams(Object.entries(o).filter(([, v]) => v)).to
 export const api = {
   cities: () => req("/catalog/cities"),
   interests: () => req("/catalog/interests"),
+  getUsers: () => req("/users"),
   signup: (d) => req("/users", "POST", d),
   getUser: (id) => req(`/users/${id}`),
   myGroups: (uid) => req(`/users/${uid}/groups`),

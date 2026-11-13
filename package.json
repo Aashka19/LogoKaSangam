@@ -1,0 +1,13 @@
+{
+  "name": "group-travel-matcher",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Group Travel Matcher - Booking.com Intern Hackathon",
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix FrontEnd install",
+    "seed": "npm --prefix backend run seed",
+    "test": "npm --prefix backend test",
+    "backend": "npm --prefix backend run dev",
+    "frontend": "npm --prefix FrontEnd run dev"
+  }
+}

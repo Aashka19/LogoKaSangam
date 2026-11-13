@@ -18,8 +18,13 @@ export default function Requests({ user }) {
 
   return (
     <>
-      <h1>Join requests</h1>
-      <Link to={`/groups/${id}`}>Back to group</Link>
+      <div className="row between align-center">
+        <h1>Join requests</h1>
+        <div className="row" style={{ gap: "0.5rem" }}>
+          <Link className="btn ghost" to={`/groups/${id}`}>Group details</Link>
+          <Link className="btn" to={`/groups/${id}/trip`}>Group workspace</Link>
+        </div>
+      </div>
       {loading && <p className="muted">Loading…</p>}
       {error && <p className="error">{error}</p>}
       {catalogError && <p className="error">{catalogError}</p>}
@@ -28,7 +33,7 @@ export default function Requests({ user }) {
         <article className="card" key={r.id}>
           <div className="row between">
             <h3><Link to={`/users/${r.userId}`}>{r.name}</Link></h3>
-            <span className="muted">{r.homeCity}</span>
+            <span className="muted">{r.gender}{r.age ? `, ${r.age} yrs` : ""} · from {r.homeCity}</span>
           </div>
           {r.sharedInterests?.length > 0 && (
             <p className="muted">Shared interests: {r.sharedInterests.map((interest) => {

@@ -31,8 +31,13 @@ export default function Navbar({ user, onLogout }) {
             <NavLink to="/" end>
               My trips {pending > 0 && <span className="badge">{pending}</span>}
             </NavLink>
-            <Link to={`/users/${user.id}`} className="avatar" title={user.name}>{user.name?.[0]?.toUpperCase()}</Link>
-            <button className="link" onClick={onLogout}>Sign out</button>
+            <Link to={`/users/${user.id}`} className="avatar" title={`${user.name} (${user.homeCity || ""})`}>
+              {user.name?.[0]?.toUpperCase()}
+            </Link>
+            <span style={{ fontSize: "0.85rem", opacity: 0.85, marginRight: "0.25rem" }}>
+              {user.name}
+            </span>
+            <button className="link" onClick={onLogout}>Switch / Sign out</button>
           </nav>
         )}
       </div>

@@ -4,7 +4,14 @@ const mongoose = require("mongoose");
 const Group = require("../models/group");
 const User = require("../models/user");
 const { availability, cities, hotels, interestIds, rooms } = require("../lib/data");
-const { evaluateMatch, httpError, stayNights, validateDates } = require("../lib/travel");
+const {
+  evaluateMatch,
+  httpError,
+  normalizeInterest,
+  normalizePreference,
+  stayNights,
+  validateDates,
+} = require("../lib/travel");
 
 const router = express.Router();
 const availabilityByRoomAndDate = new Map(
@@ -26,8 +33,8 @@ async function findGroup(id) {
 async function memberGroup(id, userId) {
   validId(userId, "user");
   const group = await findGroup(id);
-  if (!group.memberIds.some((memberId) => String(memberId) === String(userId))) {
-    throw httpError("Only group members can access this trip.", 403);
+  if (!group.memberIds.some((memberId) => String(memberId._id || memberId) === String(userId))) {
+    throw httpError("Only group members can access this trip page.", 403);
   }
   return group;
 }
@@ -55,7 +62,7 @@ function optionsFor(city, checkIn, checkOut, memberCount) {
         area: hotel.area,
         nights: nights.length,
         totalPrice,
-        perPerson: Math.round(totalPrice / memberCount),
+        perPerson: Math.round(totalPrice / Math.max(1, memberCount)),
       });
     }
   }
@@ -64,17 +71,35 @@ function optionsFor(city, checkIn, checkOut, memberCount) {
 
 function serializeGroup(group, userId) {
   const user = String(userId);
-  const isOwner = String(group.ownerId) === user;
+  const ownerIdStr = String(group.ownerId?._id || group.ownerId);
+  const isOwner = ownerIdStr === user;
+  const isMember = group.memberIds.some((m) => String(m._id || m) === user);
   const requests = group.requests || [];
+  
+  const ownerObj = group.memberIds.find((m) => String(m._id || m) === ownerIdStr) || group.ownerId;
+  const ownerName = ownerObj?.name || "Host";
+
+  const memberGenders = group.memberIds.map((m) => (m.gender || "").toLowerCase());
+  const isAllFemale = memberGenders.length > 0 && memberGenders.every((g) => g === "female");
+  const isAllMale = memberGenders.length > 0 && memberGenders.every((g) => g === "male");
+  const genderComposition = isAllFemale ? "Female only" : isAllMale ? "Male only" : "Mixed";
+
+  const membersMap = new Map(group.memberIds.map((m) => [String(m._id || m), m.name || "Member"]));
+
   return {
     id: String(group._id),
     name: group.name,
-    ownerId: String(group.ownerId),
+    ownerId: ownerIdStr,
+    ownerName,
+    isMember,
+    isOwner,
     members: group.memberIds.map((member) => ({
       id: String(member._id || member),
       name: member.name || "Traveller",
       homeCity: member.homeCity || "",
       gender: member.gender || "",
+      age: member.age ?? null,
+      interests: member.interests || [],
     })),
     memberCount: group.memberIds.length,
     city: group.city,
@@ -82,10 +107,11 @@ function serializeGroup(group, userId) {
     checkOut: group.checkOut,
     groupSize: group.groupSize,
     budget: group.budget,
-    interests: group.interests,
-    itinerary: group.itinerary,
-    ownerGender: group.memberIds.find((member) => String(member._id || member) === String(group.ownerId))?.gender || "",
-    genderPreference: group.memberIds.find((member) => String(member._id || member) === String(group.ownerId))?.genderPreference || "any",
+    interests: group.interests || [],
+    itinerary: group.itinerary || "",
+    genderComposition,
+    ownerGender: ownerObj?.gender || "",
+    genderPreference: ownerObj?.genderPreference || "any",
     myRequestStatus: requests.find((request) => String(request.userId) === user)?.status || "",
     pendingCount: isOwner ? requests.filter((request) => request.status === "pending").length : 0,
     savedOptions: group.savedOptions.map((option) => ({
@@ -95,10 +121,12 @@ function serializeGroup(group, userId) {
       hotelName: option.hotelName,
       roomType: option.roomType,
       totalPrice: option.totalPrice,
-      perPerson: Math.round(option.totalPrice / group.memberIds.length),
+      perPerson: Math.round(option.totalPrice / Math.max(1, group.memberIds.length)),
       nights: option.nights,
       checkIn: option.checkIn,
       checkOut: option.checkOut,
+      savedBy: option.savedBy,
+      savedByName: membersMap.get(String(option.savedBy)) || "Group member",
     })),
     booking: group.booking,
   };
@@ -110,13 +138,16 @@ router.post("/", async (req, res) => {
   const owner = await User.findById(ownerId);
   if (!owner) throw httpError("User not found.", 404);
   if (!name?.trim()) throw httpError("Group name is required.");
-  if (!cities.includes(city)) throw httpError("Choose one of the supported destinations.");
+  if (!cities.includes(city)) throw httpError("Choose one of the supported destinations (Tokyo, Kyoto, Osaka, Dubai, Abu Dhabi).");
   validateDates(checkIn, checkOut);
   if (!Number.isInteger(Number(groupSize)) || Number(groupSize) < 1 || Number(groupSize) > 4) {
     throw httpError("Group size must be between 1 and 4, including the owner.");
   }
   if (!Number.isFinite(Number(budget)) || Number(budget) <= 0) throw httpError("Budget must be greater than zero.");
-  if (!Array.isArray(interests) || interests.some((interest) => !interestIds.has(interest))) {
+  
+  const rawInterests = Array.isArray(interests) && interests.length > 0 ? interests : owner.interests || [];
+  const normalizedInterests = [...new Set(rawInterests.map(normalizeInterest))];
+  if (normalizedInterests.some((interest) => !interestIds.has(interest))) {
     throw httpError("Choose interests from the available list.");
   }
 
@@ -129,30 +160,40 @@ router.post("/", async (req, res) => {
     checkOut,
     groupSize: Number(groupSize),
     budget: Number(budget),
-    interests,
+    interests: normalizedInterests,
     itinerary: String(itinerary).trim(),
   });
   res.status(201).json({ id: String(group._id), _id: String(group._id), name: group.name });
 });
 
+// View group details (accessible to any authenticated user/seeker, not just members!)
 router.get("/:id", async (req, res) => {
-  const group = await memberGroup(req.params.id, req.query.userId);
-  await group.populate("memberIds", "name homeCity gender genderPreference interests");
+  const group = await findGroup(req.params.id);
+  await group.populate("ownerId", "name gender genderPreference interests age homeCity");
+  await group.populate("memberIds", "name homeCity gender genderPreference interests age");
   res.json(serializeGroup(group, req.query.userId));
 });
 
 router.post("/:id/interest", async (req, res) => {
   const group = await findGroup(req.params.id);
   const userId = validId(req.body.userId, "user");
-  const requestedInterests = Array.isArray(req.body.interests) ? [...new Set(req.body.interests)] : [];
+  const user = await User.findById(userId);
+  if (!user) throw httpError("User not found.", 404);
+
+  const rawInterests = Array.isArray(req.body.interests) && req.body.interests.length > 0
+    ? req.body.interests
+    : user.interests || [];
+  const requestedInterests = [...new Set(rawInterests.map(normalizeInterest))];
+
   const criteria = {
-    city: req.body.city,
-    checkIn: req.body.checkIn,
-    checkOut: req.body.checkOut,
-    budget: Number(req.body.budget),
+    city: req.body.city || group.city,
+    checkIn: req.body.checkIn || group.checkIn,
+    checkOut: req.body.checkOut || group.checkOut,
+    budget: Number(req.body.budget) || group.budget,
     interests: requestedInterests,
-    genderPreference: req.body.genderPreference,
+    genderPreference: normalizePreference(req.body.genderPreference || user.genderPreference, user.gender),
   };
+
   validateDates(criteria.checkIn, criteria.checkOut);
   if (criteria.interests.length < 2 || criteria.interests.some((interest) => !interestIds.has(interest))) {
     throw httpError("At least two valid interests are required to request a match.");
@@ -161,13 +202,13 @@ router.post("/:id/interest", async (req, res) => {
   if (!["any", "female_only", "male_only"].includes(criteria.genderPreference)) {
     throw httpError("Choose a valid travel companion preference.");
   }
-  const user = await User.findById(userId);
-  if (!user) throw httpError("User not found.", 404);
+
   if (group.booking) throw httpError("This group is locked because it has a booking.", 409);
-  if (group.memberIds.some((memberId) => String(memberId) === String(user._id))) {
+  if (group.memberIds.some((memberId) => String(memberId._id || memberId) === String(user._id))) {
     throw httpError("You are already a group member.", 409);
   }
   if (group.memberIds.length >= group.groupSize) throw httpError("This group is full.", 409);
+  
   const owner = await User.findById(group.ownerId);
   if (!owner || !evaluateMatch({ ...group.toObject(), ownerId: owner }, user, criteria)) {
     throw httpError("This group does not meet the matching requirements.", 409);
@@ -204,6 +245,8 @@ router.get("/:id/requests", async (req, res) => {
         userId: String(request.userId),
         name: user?.name || "Traveller",
         homeCity: user?.homeCity || "",
+        gender: user?.gender || "",
+        age: user?.age || null,
         sharedInterests: (user?.interests || []).filter((interest) => owner.interests.includes(interest)),
       };
     }),
@@ -254,7 +297,7 @@ router.post("/:id/requests/:requestId/:action", async (req, res) => {
 router.get("/:id/hotels", async (req, res) => {
   const group = await memberGroup(req.params.id, req.query.userId);
   const { checkIn, checkOut } = req.query;
-  const hotelOptions = optionsFor(group.city, checkIn, checkOut, group.memberIds.length);
+  const hotelOptions = optionsFor(group.city, checkIn || group.checkIn, checkOut || group.checkOut, group.memberIds.length);
   res.json({ hotels: hotelOptions });
 });
 

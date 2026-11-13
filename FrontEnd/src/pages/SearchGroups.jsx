@@ -6,11 +6,16 @@ import MatchCard from "../components/MatchCard.jsx";
 export default function SearchGroups({ user }) {
   const { cities, interests, error: catalogError } = useCatalog();
   const [f, setF] = useState({
-    homeCity: user.homeCity || "", city: "", checkIn: "", checkOut: "",
-    interests: user.interests || [], budget: "", genderPreference: user.genderPreference || "any",
+    homeCity: user.homeCity || "",
+    city: "",
+    checkIn: "",
+    checkOut: "",
+    interests: user.interests || [],
+    budget: "",
+    genderPreference: user.genderPreference || "any",
   });
   const [results, setResults] = useState(null);
-  const [filter, setFilter] = useState({ interests: [], gender: "" });
+  const [filter, setFilter] = useState({ interests: [], gender: "", composition: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [requestingId, setRequestingId] = useState("");
@@ -28,7 +33,7 @@ export default function SearchGroups({ user }) {
     try {
       const r = await api.search({ ...f, budget: Number(f.budget), userId: user.id });
       setResults(r.matches || r);
-      setFilter({ interests: [], gender: "" });
+      setFilter({ interests: [], gender: "", composition: "" });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -59,11 +64,12 @@ export default function SearchGroups({ user }) {
     }
   };
 
-  const shown = (results || []).filter(
-    (g) =>
-      (!filter.gender || g.ownerGender === filter.gender) &&
-      filter.interests.every((i) => (g.sharedInterests || []).includes(i))
-  );
+  const shown = (results || []).filter((g) => {
+    if (filter.gender && g.ownerGender !== filter.gender) return false;
+    if (filter.composition && g.genderComposition !== filter.composition) return false;
+    if (filter.interests.length > 0 && !filter.interests.every((i) => (g.sharedInterests || []).includes(i))) return false;
+    return true;
+  });
 
   return (
     <>
@@ -115,6 +121,14 @@ export default function SearchGroups({ user }) {
                 <option value="female">Female</option>
                 <option value="male">Male</option>
                 <option value="other">Other</option>
+              </select>
+            </label>
+            <label>Gender composition
+              <select value={filter.composition} onChange={(e) => setFilter({ ...filter, composition: e.target.value })}>
+                <option value="">Any composition</option>
+                <option value="Female only">Female only</option>
+                <option value="Male only">Male only</option>
+                <option value="Mixed">Mixed</option>
               </select>
             </label>
           </aside>

@@ -44,6 +44,7 @@ const messageSchema = new mongoose.Schema(
 
 const groupSchema = new mongoose.Schema(
   {
+    groupId: { type: String, sparse: true, index: true },
     name: { type: String, required: true, trim: true },
     ownerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     memberIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }],

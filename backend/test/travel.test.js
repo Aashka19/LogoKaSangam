@@ -57,4 +57,15 @@ test("applies supported gender preferences", () => {
   assert.equal(preferenceAllows("any", "other"), true);
   assert.equal(preferenceAllows("female_only", "female"), true);
   assert.equal(preferenceAllows("female_only", "other"), false);
+  assert.equal(preferenceAllows("SAME_GENDER", "female", "female"), true);
+  assert.equal(preferenceAllows("SAME_GENDER", "male", "female"), false);
 });
+
+test("enforces group size limit (Rule 6)", () => {
+  const fullGroup = { ...group, groupSize: 2, memberIds: ["member-1", "member-2"] };
+  assert.equal(evaluateMatch(fullGroup, seeker, criteria), null);
+
+  const openGroup = { ...group, groupSize: 3, memberIds: ["member-1", "member-2"] };
+  assert.ok(evaluateMatch(openGroup, seeker, criteria));
+});
+

@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const Group = require("../models/group");
 const User = require("../models/user");
 const { interestIds } = require("../lib/data");
-const { httpError } = require("../lib/travel");
+const { httpError, normalizeGender, normalizeInterest, normalizePreference } = require("../lib/travel");
 
 const router = express.Router();
 
@@ -28,14 +28,39 @@ function summary(group, user) {
   };
 }
 
+router.get("/", async (_req, res) => {
+  const users = await User.find().sort({ createdAt: 1 });
+  res.json({
+    users: users.map((user) => ({
+      _id: String(user._id),
+      id: String(user._id),
+      travellerId: user.travellerId || "",
+      name: user.name,
+      age: user.age,
+      gender: user.gender,
+      homeCity: user.homeCity,
+      genderPreference: user.genderPreference,
+      interests: user.interests,
+    })),
+  });
+});
+
 router.post("/", async (req, res) => {
   const { name, age, gender, homeCity, interests = [], genderPreference = "any" } = req.body;
   if (!name?.trim() || !homeCity?.trim()) throw httpError("Name and home city are required.");
-  if (!["female", "male", "other"].includes(gender)) throw httpError("Choose a valid gender.");
-  if (!["any", "female_only", "male_only"].includes(genderPreference)) {
+  
+  const normGender = normalizeGender(gender);
+  if (!["female", "male", "other"].includes(normGender)) throw httpError("Choose a valid gender.");
+
+  const normPref = normalizePreference(genderPreference, normGender);
+  if (!["any", "female_only", "male_only"].includes(normPref)) {
     throw httpError("Choose a valid travel companion preference.");
   }
-  if (!Array.isArray(interests) || interests.some((interest) => !interestIds.has(interest))) {
+
+  const normalizedInterests = Array.isArray(interests)
+    ? [...new Set(interests.map(normalizeInterest))]
+    : [];
+  if (normalizedInterests.some((interest) => !interestIds.has(interest))) {
     throw httpError("Choose interests from the available list.");
   }
   if (age !== null && age !== undefined && age !== "" && (!Number.isInteger(Number(age)) || Number(age) < 18)) {
@@ -45,14 +70,16 @@ router.post("/", async (req, res) => {
   const user = await User.create({
     name: name.trim(),
     age: age === null || age === undefined || age === "" ? null : Number(age),
-    gender,
+    gender: normGender,
     homeCity: homeCity.trim(),
-    genderPreference,
-    interests,
+    genderPreference: normPref,
+    interests: normalizedInterests,
   });
+
   res.status(201).json({
     _id: String(user._id),
     id: String(user._id),
+    travellerId: user.travellerId || "",
     name: user.name,
     age: user.age,
     gender: user.gender,
@@ -88,6 +115,7 @@ router.get("/:id", async (req, res) => {
   res.json({
     _id: String(user._id),
     id: String(user._id),
+    travellerId: user.travellerId || "",
     name: user.name,
     age: user.age,
     gender: user.gender,

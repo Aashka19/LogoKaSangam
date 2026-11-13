@@ -11,8 +11,13 @@ export default function Profile() {
 
   return (
     <>
-      <h1>{u.name}</h1>
-      <p className="muted">{u.age ? `${u.age} · ` : ""}{u.gender} · from {u.homeCity}</p>
+      <div className="row align-center" style={{ gap: "0.5rem" }}>
+        <h1 style={{ margin: 0 }}>{u.name}</h1>
+        {u.travellerId && <span className="pill">{u.travellerId}</span>}
+      </div>
+      <p className="muted">
+        {u.age ? `${u.age} yrs · ` : ""}{u.gender} · from {u.homeCity} · travel preference: {String(u.genderPreference || "any").replace("_only", " only")}
+      </p>
       <h2>Interests</h2>
       <div className="chips">{(u.interests || []).map((i) => {
         const option = interests.find((item) => val(item) === i);
