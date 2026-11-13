@@ -6,7 +6,7 @@ import BookingModal from "../components/BookingModal.jsx";
 
 export default function CommonGroupPage({ user }) {
   const { id } = useParams();
-  const { data: g, loading, error, reload } = useLoad(() => api.getGroup(id), [id]);
+  const { data: g, loading, error, reload } = useLoad(() => api.getGroup(id, user.id), [id, user.id]);
   const [hotels, setHotels] = useState(null);
   const [dates, setDates] = useState({ checkIn: "", checkOut: "" });
   const [err, setErr] = useState("");
@@ -25,7 +25,7 @@ export default function CommonGroupPage({ user }) {
   async function search(ci = dates.checkIn, co = dates.checkOut) {
     setErr("");
     try {
-      const r = await api.hotels(id, ci, co);
+      const r = await api.hotels(id, ci, co, user.id);
       setHotels(r.hotels || r);
     } catch (e) {
       setErr(e.message);
@@ -40,10 +40,38 @@ export default function CommonGroupPage({ user }) {
   const n = members.length || 1;
   const saved = g.savedOptions || [];
   const booking = g.booking;
-  const savedKey = (h) => saved.find((s) => s.hotelId === h.hotelId && s.roomId === h.roomId);
+  const savedKey = (h) =>
+    saved.find((s) =>
+      s.hotelId === h.hotelId &&
+      s.roomId === h.roomId &&
+      s.checkIn === dates.checkIn &&
+      s.checkOut === dates.checkOut
+    );
 
-  const save = async (h) => { await api.saveOption(id, { hotelId: h.hotelId, roomId: h.roomId, userId: user.id }); reload(); };
-  const remove = async (s) => { await api.removeOption(id, s.id); reload(); };
+  const save = async (h) => {
+    try {
+      await api.saveOption(id, {
+        hotelId: h.hotelId,
+        roomId: h.roomId,
+        checkIn: dates.checkIn,
+        checkOut: dates.checkOut,
+        userId: user.id,
+      });
+      setErr("");
+      reload();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+  const remove = async (s) => {
+    try {
+      await api.removeOption(id, s.id, user.id);
+      setErr("");
+      reload();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
 
   const confirm = async () => {
     setBusy(true);
@@ -125,25 +153,38 @@ export default function CommonGroupPage({ user }) {
 function Chat({ gid, user }) {
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const tick = () => api.messages(gid).then((r) => setMsgs(r.messages || r)).catch(() => {});
+    const tick = () => api.messages(gid, user.id)
+      .then((r) => {
+        setMsgs(r.messages || r);
+        setError("");
+      })
+      .catch((e) => setError(e.message));
     tick();
     const t = setInterval(tick, 4000);
     return () => clearInterval(t);
-  }, [gid]);
+  }, [gid, user.id]);
 
   const send = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    await api.sendMessage(gid, user.id, text.trim()).catch(() => {});
-    setText("");
-    api.messages(gid).then((r) => setMsgs(r.messages || r)).catch(() => {});
+    try {
+      await api.sendMessage(gid, user.id, text.trim());
+      setText("");
+      const r = await api.messages(gid, user.id);
+      setMsgs(r.messages || r);
+      setError("");
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   return (
     <>
       <h2>Chat</h2>
+      {error && <p className="error">{error}</p>}
       <div className="chat">
         {msgs.length === 0 && <p className="muted">No messages yet.</p>}
         {msgs.map((m) => (

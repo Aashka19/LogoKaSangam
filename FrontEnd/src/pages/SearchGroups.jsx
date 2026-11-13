@@ -4,7 +4,7 @@ import { Chips } from "./SignUp.jsx";
 import MatchCard from "../components/MatchCard.jsx";
 
 export default function SearchGroups({ user }) {
-  const { cities, interests } = useCatalog();
+  const { cities, interests, error: catalogError } = useCatalog();
   const [f, setF] = useState({
     homeCity: user.homeCity || "", city: "", checkIn: "", checkOut: "",
     interests: user.interests || [], budget: "", genderPreference: user.genderPreference || "any",
@@ -13,6 +13,8 @@ export default function SearchGroups({ user }) {
   const [filter, setFilter] = useState({ interests: [], gender: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [requestingId, setRequestingId] = useState("");
+  const [requestError, setRequestError] = useState("");
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
   const submit = async (e) => {
@@ -21,6 +23,7 @@ export default function SearchGroups({ user }) {
     if (!f.city || !f.checkIn || !f.checkOut) return setError("Choose a destination and dates.");
     if (f.checkOut <= f.checkIn) return setError("Check-out must be after check-in.");
     if (!(Number(f.budget) > 0)) return setError("Enter your budget per person.");
+    if (f.interests.length < 2) return setError("Choose at least two interests to find matches.");
     setBusy(true);
     try {
       const r = await api.search({ ...f, budget: Number(f.budget), userId: user.id });
@@ -30,6 +33,29 @@ export default function SearchGroups({ user }) {
       setError(err.message);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const requestToJoin = async (groupId) => {
+    setRequestingId(groupId);
+    setRequestError("");
+    try {
+      await api.interested(groupId, {
+        userId: user.id,
+        city: f.city,
+        checkIn: f.checkIn,
+        checkOut: f.checkOut,
+        budget: Number(f.budget),
+        interests: f.interests,
+        genderPreference: f.genderPreference,
+      });
+      setResults((current) =>
+        current.map((group) => group.id === groupId ? { ...group, myRequestStatus: "pending" } : group)
+      );
+    } catch (e) {
+      setRequestError(e.message);
+    } finally {
+      setRequestingId("");
     }
   };
 
@@ -71,6 +97,7 @@ export default function SearchGroups({ user }) {
               <Chips options={interests} value={f.interests} onChange={(v) => setF({ ...f, interests: v })} />
             </div>
             {error && <p className="hero-error">{error}</p>}
+            {catalogError && <p className="hero-error">{catalogError}</p>}
           </form>
         </div>
       </section>
@@ -80,13 +107,14 @@ export default function SearchGroups({ user }) {
           <aside className="side-filters">
             <h3>Filter results</h3>
             <div className="field">Must share
-              <Chips options={f.interests} value={filter.interests} onChange={(v) => setFilter({ ...filter, interests: v })} />
+              <Chips options={interests.filter((interest) => f.interests.includes(val(interest)))} value={filter.interests} onChange={(v) => setFilter({ ...filter, interests: v })} />
             </div>
             <label>Host gender
               <select value={filter.gender} onChange={(e) => setFilter({ ...filter, gender: e.target.value })}>
                 <option value="">Any</option>
                 <option value="female">Female</option>
                 <option value="male">Male</option>
+                <option value="other">Other</option>
               </select>
             </label>
           </aside>
@@ -98,7 +126,15 @@ export default function SearchGroups({ user }) {
                 <p className="muted">Try widening your dates, adding interests or raising your budget, or create your own group.</p>
               </div>
             )}
-            {shown.map((g) => <MatchCard key={g.id} g={g} />)}
+            {requestError && <p className="error">{requestError}</p>}
+            {shown.map((g) => (
+              <MatchCard
+                key={g.id}
+                g={g}
+                requesting={requestingId === g.id}
+                onInterested={() => requestToJoin(g.id)}
+              />
+            ))}
           </section>
         </div>
       )}

@@ -4,10 +4,16 @@ import { api } from "../api.js";
 
 export default function Navbar({ user, onLogout }) {
   const [pending, setPending] = useState(0);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!user) return;
-    const tick = () => api.pendingCount(user.id).then((r) => setPending(r.count ?? r)).catch(() => {});
+    const tick = () => api.pendingCount(user.id)
+      .then((r) => {
+        setPending(r.count ?? r);
+        setError("");
+      })
+      .catch((e) => setError(e.message));
     tick();
     const t = setInterval(tick, 5000);
     return () => clearInterval(t);
@@ -19,6 +25,7 @@ export default function Navbar({ user, onLogout }) {
         <Link to="/" className="brand">Travel Together</Link>
         {user && (
           <nav>
+            {error && <span className="error" role="status" title={error}>Requests unavailable</span>}
             <NavLink to="/search">Find a group</NavLink>
             <NavLink to="/groups/new">Create a group</NavLink>
             <NavLink to="/" end>

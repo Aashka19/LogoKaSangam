@@ -1,40 +1,20 @@
-
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true
-    },
-
-    age: {
-        type: Number,
-        required: true
-    },
-
-    gender: {
-        type: String,
-        required: true,
-        enum: ["MALE", "FEMALE"]
-    },
-
-    homeCity: {
-        type: String,
-        required: true
-    },
-
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    age: { type: Number, min: 18, default: null },
+    gender: { type: String, required: true, enum: ["female", "male", "other"] },
+    homeCity: { type: String, required: true, trim: true },
     genderPreference: {
-        type: String,
-        required: true,
-        enum: ["Men Only", "Anyone", "Women Only"]
+      type: String,
+      required: true,
+      enum: ["any", "female_only", "male_only"],
+      default: "any",
     },
+    interests: { type: [String], default: [] },
+  },
+  { timestamps: true }
+);
 
-    interests: {
-        type: [String],
-        required: true
-    }
-});
-
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);

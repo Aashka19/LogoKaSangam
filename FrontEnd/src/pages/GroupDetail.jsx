@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, useLoad, fmtDate, inr } from "../api.js";
+import { api, useCatalog, useLoad, fmtDate, inr, label, val } from "../api.js";
 
 export default function GroupDetail({ user }) {
   const { id } = useParams();
-  const { data: g, loading, error, reload } = useLoad(() => api.getGroup(id), [id]);
-  const [msg, setMsg] = useState("");
+  const { data: g, loading, error } = useLoad(() => api.getGroup(id, user.id), [id, user.id]);
+  const { interests, error: catalogError } = useCatalog();
 
   if (loading) return <p className="muted">Loading…</p>;
   if (error) return <p className="error">{error}</p>;
@@ -13,27 +12,21 @@ export default function GroupDetail({ user }) {
   const members = g.members || [];
   const isMember = members.some((m) => String(m.id) === String(user.id));
   const isOwner = String(g.ownerId) === String(user.id);
-  const full = members.length >= g.groupSize;
-  const requested = g.myRequestStatus === "pending";
-
-  const interested = async () => {
-    try {
-      await api.interested(id, user.id);
-      setMsg("Request sent. The owner will review it.");
-      reload();
-    } catch (e) {
-      setMsg(e.message);
-    }
-  };
-
   return (
     <>
       <h1>{g.name}</h1>
       <p className="muted">
         {g.city} · {fmtDate(g.checkIn)} – {fmtDate(g.checkOut)} · budget {inr(g.budget)} per person ·{" "}
-        {members.length}/{g.groupSize} travellers
+        {members.length}/{g.groupSize} travellers · travel preference: {g.genderPreference.replace("_only", " only")}
       </p>
       {g.itinerary && <p className="prose">{g.itinerary}</p>}
+      {g.interests?.length > 0 && (
+        <div className="chips">{g.interests.map((interest) => {
+          const option = interests.find((item) => val(item) === interest);
+          return <span className="chip on" key={interest}>{option ? label(option) : interest}</span>;
+        })}</div>
+      )}
+      {catalogError && <p className="error">{catalogError}</p>}
 
       <h2>Travellers</h2>
       <ul className="people">
@@ -52,13 +45,7 @@ export default function GroupDetail({ user }) {
             Requests {g.pendingCount > 0 && <span className="badge">{g.pendingCount}</span>}
           </Link>
         )}
-        {!isMember && (
-          <button className="btn" disabled={full || requested} onClick={interested}>
-            {full ? "Group is full" : requested ? "Request pending" : "I'm interested"}
-          </button>
-        )}
       </div>
-      {msg && <p className="muted">{msg}</p>}
     </>
   );
 }

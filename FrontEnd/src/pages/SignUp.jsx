@@ -15,7 +15,7 @@ export function Chips({ options, value, onChange }) {
 }
 
 export default function SignUp({ onDone }) {
-  const { cities, interests } = useCatalog();
+  const { interests, error: catalogError } = useCatalog();
   const [f, setF] = useState({ name: "", age: "", gender: "female", homeCity: "", interests: [], genderPreference: "any" });
   const [error, setError] = useState("");
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
@@ -55,6 +55,7 @@ export default function SignUp({ onDone }) {
       <div className="field">Interests
         <Chips options={interests} value={f.interests} onChange={(v) => setF({ ...f, interests: v })} />
       </div>
+      {catalogError && <p className="error">{catalogError}</p>}
       {error && <p className="error">{error}</p>}
       <button className="btn">Create profile</button>
     </form>

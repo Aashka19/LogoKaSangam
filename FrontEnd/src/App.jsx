@@ -23,8 +23,9 @@ export default function App() {
   }, []);
 
   const login = (u) => {
-    session.set(u.id);
-    setUser(u);
+    const id = u._id || u.id;
+    session.set(id);
+    setUser({ ...u, id });
     nav("/");
   };
   const logout = () => {

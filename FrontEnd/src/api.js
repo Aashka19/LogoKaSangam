@@ -22,17 +22,17 @@ export const api = {
   getUser: (id) => req(`/users/${id}`),
   myGroups: (uid) => req(`/users/${uid}/groups`),
   createGroup: (d) => req("/groups", "POST", d),
-  getGroup: (id) => req(`/groups/${id}`),
+  getGroup: (id, userId) => req(`/groups/${id}?${qs({ userId })}`),
   search: (criteria) => req("/matches/search", "POST", criteria),
-  interested: (gid, userId) => req(`/groups/${gid}/interest`, "POST", { userId }),
-  pending: (gid) => req(`/groups/${gid}/requests`),
-  decide: (gid, rid, action) => req(`/groups/${gid}/requests/${rid}/${action}`, "POST"),
+  interested: (gid, criteria) => req(`/groups/${gid}/interest`, "POST", criteria),
+  pending: (gid, userId) => req(`/groups/${gid}/requests?${qs({ userId })}`),
+  decide: (gid, rid, action, userId) => req(`/groups/${gid}/requests/${rid}/${action}`, "POST", { userId }),
   pendingCount: (uid) => req(`/users/${uid}/pending-count`),
-  hotels: (gid, checkIn, checkOut) => req(`/groups/${gid}/hotels?${qs({ checkIn, checkOut })}`),
+  hotels: (gid, checkIn, checkOut, userId) => req(`/groups/${gid}/hotels?${qs({ checkIn, checkOut, userId })}`),
   saveOption: (gid, d) => req(`/groups/${gid}/saved-options`, "POST", d),
-  removeOption: (gid, oid) => req(`/groups/${gid}/saved-options/${oid}`, "DELETE"),
+  removeOption: (gid, oid, userId) => req(`/groups/${gid}/saved-options/${oid}?${qs({ userId })}`, "DELETE"),
   book: (gid, optionId, userId) => req(`/groups/${gid}/book`, "POST", { optionId, userId }),
-  messages: (gid) => req(`/groups/${gid}/messages`),
+  messages: (gid, userId) => req(`/groups/${gid}/messages?${qs({ userId })}`),
   sendMessage: (gid, userId, text) => req(`/groups/${gid}/messages`, "POST", { userId, text }),
 };
 
@@ -54,11 +54,17 @@ export const MAX_DATE = "2027-04-20";
 export function useCatalog() {
   const [cities, setCities] = useState([]);
   const [interests, setInterests] = useState([]);
+  const [error, setError] = useState("");
   useEffect(() => {
-    api.cities().then(setCities).catch(() => {});
-    api.interests().then(setInterests).catch(() => {});
+    Promise.all([api.cities(), api.interests()])
+      .then(([cityOptions, interestOptions]) => {
+        setCities(cityOptions);
+        setInterests(interestOptions);
+        setError("");
+      })
+      .catch((e) => setError(e.message));
   }, []);
-  return { cities, interests };
+  return { cities, interests, error };
 }
 
 export function useLoad(fn, deps = []) {
