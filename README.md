@@ -6,41 +6,6 @@ Built for the **Intern Hackathon: Group Travel Matcher (Problem 3)**.
 
 ---
 
-## Architecture Overview
-
-```
-                      ┌────────────────────────────────────────┐
-                      │          React 18 + Vite SPA           │
-                      │  (Search, Matches, Trip Page, Chat)    │
-                      └──────────────────┬─────────────────────┘
-                                         │ REST API (/api)
-                                         ▼
-                      ┌────────────────────────────────────────┐
-                      │         Express.js / Node.js           │
-                      │  - Compatibility Matching Engine (6)   │
-                      │  - Ranking & Tie-breaking Logic        │
-                      │  - Hotel Room Availability Aggregator  │
-                      │  - Request & Membership Management     │
-                      │  - Booking Consensus Locking           │
-                      └────────────┬──────────────┬────────────┘
-                                   │              │
-                     Reads catalog │              │ Persists state
-                                   ▼              ▼
-                      ┌────────────────┐   ┌───────────────────┐
-                      │ Read-Only Data │   │      MongoDB      │
-                      │  (Destinations,│   │  (Users, Groups,  │
-                      │   Hotels,      │   │   Requests, Chat, │
-                      │   Rooms, Avail)│   │   Final Bookings) │
-                      └────────────────┘   └───────────────────┘
-```
-
-- **Backend holds all business logic**: 6 matching rules, candidate ranking, tie-breaking, join request approvals, hotel search aggregation, and per-person cost splits run entirely on the backend.
-- **Frontend consumes backend API**: Does not read catalog files directly; fetches catalog metadata, matches, hotel availability, and chat via `/api`.
-- **State persistence**: User profiles, group posts, memberships, join requests, chat history, and finalized bookings persist across page refreshes and backend restarts in MongoDB.
-- **Strictly No AI/LLM inside app**: Pure algorithmic matching and deterministic rule-based evaluation.
-
----
-
 ## Quick Start (1–2 Commands)
 
 ### 1. Install dependencies
@@ -51,13 +16,13 @@ npm run install:all
 ### 2. Start Backend & Frontend
 In Terminal 1 (Backend):
 ```sh
-npm run backend
+node server.js
 ```
 *(Backend runs on port `5001`. On first startup, it automatically seeds the 24 mock travellers and 12 open groups if the database is fresh).*
 
 In Terminal 2 (Frontend):
 ```sh
-npm run frontend
+npm run dev
 ```
 *(Open http://localhost:5173)*
 
