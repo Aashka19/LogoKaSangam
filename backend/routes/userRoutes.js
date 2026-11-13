@@ -28,23 +28,6 @@ function summary(group, user) {
   };
 }
 
-router.get("/", async (_req, res) => {
-  const users = await User.find().sort({ createdAt: 1 });
-  res.json({
-    users: users.map((user) => ({
-      _id: String(user._id),
-      id: String(user._id),
-      travellerId: user.travellerId || "",
-      name: user.name,
-      age: user.age,
-      gender: user.gender,
-      homeCity: user.homeCity,
-      genderPreference: user.genderPreference,
-      interests: user.interests,
-    })),
-  });
-});
-
 router.post("/", async (req, res) => {
   const { name, age, gender, homeCity, interests = [], genderPreference = "any" } = req.body;
   if (!name?.trim() || !homeCity?.trim()) throw httpError("Name and home city are required.");

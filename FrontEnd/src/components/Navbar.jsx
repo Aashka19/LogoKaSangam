@@ -37,7 +37,7 @@ export default function Navbar({ user, onLogout }) {
             <span style={{ fontSize: "0.85rem", opacity: 0.85, marginRight: "0.25rem" }}>
               {user.name}
             </span>
-            <button className="link" onClick={onLogout}>Switch / Sign out</button>
+            <button className="link" onClick={onLogout}>Sign out</button>
           </nav>
         )}
       </div>

@@ -73,7 +73,7 @@ npm run seed
 
 ### Scenario A: Group Creator (Sarah Thomas)
 1. Navigate to http://localhost:5173.
-2. Under **Sign In Existing**, select **Sarah Thomas** (`T-001`) from Bengaluru (or create a new profile).
+2. Sign up as **Sarah Thomas** from Bengaluru (Age: 27, Female, Travel with: Women only, Interests: Temples, Street food, Photography, Budget stays).
 3. Click **Create a group** (`/groups/new`):
    - Destination: **Kyoto**
    - Dates: **2027-04-10** to **2027-04-15** (5 nights)
@@ -84,8 +84,8 @@ npm run seed
 4. Sarah's post appears under **My trips** with Sarah as the host (member 1 of 3).
 
 ### Scenario B: Group Seeker (Priya Shah)
-1. Click **Switch / Sign out** in the navigation bar.
-2. Select **Priya Shah** (`T-002`) from Mumbai (Female, Female only preference, Interests: Temples, Street food, Adventure).
+1. In another browser or incognito window (or after signing out), open http://localhost:5173.
+2. Sign up as **Priya Shah** from Mumbai (Age: 26, Female, Travel with: Women only, Interests: Temples, Street food, Adventure).
 3. Click **Find your travel crew** (`/search`):
    - Destination: **Kyoto**
    - Dates: **2027-04-09** to **2027-04-16** (7 nights, 5 nights overlap)
@@ -104,10 +104,9 @@ npm run seed
 6. Click **Express Interest to Join**: join request is submitted; button updates to **Request Pending Approval**.
 
 ### Approval & Common Group Page Collaboration
-1. Switch back to **Sarah Thomas** (`T-001`).
-2. An alert badge appears in the top navigation and directly on the Common Group Page: **🔔 1 pending join request**.
-3. Click **Review Requests**: Sarah inspects Priya's profile, home city (Mumbai), and shared interests, then clicks **Approve**.
-4. Both Sarah and Priya now access the **Common Group Page**:
+1. In Sarah's session, an alert badge appears in the top navigation and directly on the Common Group Page: **🔔 1 pending join request**.
+2. Click **Review Requests**: Sarah inspects Priya's profile, home city (Mumbai), and shared interests, then clicks **Approve**.
+3. Both Sarah and Priya now access the **Common Group Page**:
    - Members count updates to **2/3**.
    - Hotel search runs using group dates & destination (**Kyoto**, 10–15 April 2027).
    - Each hotel room option automatically displays:
@@ -163,7 +162,6 @@ All endpoints are prefixed with `/api`:
 |---|---|---|
 | `GET` | `/api/catalog/cities` | Supported destinations (Tokyo, Kyoto, Osaka, Dubai, Abu Dhabi) |
 | `GET` | `/api/catalog/interests` | All 16 interest IDs and labels |
-| `GET` | `/api/users` | List existing travellers for fast demo switching |
 | `POST` | `/api/users` | Register a new traveller profile |
 | `GET` | `/api/users/:userId` | Profile details, interests, and joined groups |
 | `GET` | `/api/users/:userId/groups` | Groups where user is owner or approved member |
