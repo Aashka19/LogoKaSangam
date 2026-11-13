@@ -4,20 +4,24 @@ import { api, useCatalog, useLoad, label, val } from "../api.js";
 
 export default function Requests({ user }) {
   const { id } = useParams();
-  const { data, loading, error, reload } = useLoad(() => api.pending(id, user.id), [id, user.id]);
+  const currentUserId = user?.id || user?._id || localStorage.getItem("userId");
+  const { data, loading, error, reload } = useLoad(() => api.pending(id, currentUserId), [id, currentUserId]);
   const { interests, error: catalogError } = useCatalog();
   const [busyId, setBusyId] = useState("");
   const [actionError, setActionError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
   const list = data?.requests || data || [];
 
   const decide = async (rid, action) => {
     setBusyId(rid);
     setActionError("");
+    setSuccessMsg("");
     try {
-      await api.decide(id, rid, action, user.id);
+      await api.decide(id, rid, action, currentUserId);
+      setSuccessMsg(action === "approve" ? "Member approved and added to group!" : "Request rejected.");
       reload();
     } catch (e) {
-      setActionError(e.message);
+      setActionError(e.message || "Failed to update request.");
     } finally {
       setBusyId("");
     }
@@ -35,6 +39,7 @@ export default function Requests({ user }) {
       {loading && <p className="muted">Loading…</p>}
       {error && <p className="error">{error}</p>}
       {actionError && <p className="error">{actionError}</p>}
+      {successMsg && <p className="muted" style={{ color: "var(--green)", fontWeight: 600 }}>✓ {successMsg}</p>}
       {catalogError && <p className="error">{catalogError}</p>}
       {!loading && !error && list.length === 0 && <p className="muted">No pending requests.</p>}
       {list.map((r) => (

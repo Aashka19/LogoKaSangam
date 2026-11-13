@@ -255,19 +255,24 @@ router.get("/:id/requests", async (req, res) => {
 
 router.post("/:id/requests/:requestId/:action", async (req, res) => {
   const group = await findGroup(req.params.id);
-  const ownerId = validId(req.body.userId, "user");
-  const ownerIdStr = String(group.ownerId?._id || group.ownerId);
-  if (ownerIdStr !== String(ownerId)) throw httpError("Only the group owner can decide requests.", 403);
+  const ownerId = validId(req.body?.userId || req.query?.userId, "user");
+  const ownerIdStr = String(group.ownerId?._id || group.ownerId).trim();
+  if (ownerIdStr !== String(ownerId).trim()) throw httpError("Only the group owner can decide requests.", 403);
   if (!mongoose.isValidObjectId(req.params.requestId)) throw httpError("A valid request ID is required.");
   if (!["approve", "reject"].includes(req.params.action)) throw httpError("Action must be approve or reject.");
 
-  const request = group.requests.id
-    ? group.requests.id(req.params.requestId)
-    : group.requests.find((r) => String(r._id) === String(req.params.requestId));
+  const reqIdStr = String(req.params.requestId);
+  const request = group.requests.find(
+    (r) => String(r._id) === reqIdStr || String(r.userId) === reqIdStr
+  );
   if (!request || request.status !== "pending") throw httpError("Pending request not found.", 404);
+
   if (req.params.action === "reject") {
     request.status = "rejected";
-    await group.save();
+    await Group.updateOne(
+      { _id: group._id, "requests._id": request._id },
+      { $set: { "requests.$.status": "rejected" } }
+    );
     return res.json({ status: "rejected" });
   }
 
@@ -277,11 +282,18 @@ router.post("/:id/requests/:requestId/:action", async (req, res) => {
   const requester = await User.findById(request.userId);
   if (!requester) throw httpError("Requester user not found.", 404);
 
+  request.status = "approved";
   if (!group.memberIds.some((m) => String(m._id || m) === String(requester._id))) {
     group.memberIds.push(requester._id);
   }
-  request.status = "approved";
-  await group.save();
+
+  await Group.updateOne(
+    { _id: group._id, "requests._id": request._id },
+    {
+      $set: { "requests.$.status": "approved" },
+      $addToSet: { memberIds: requester._id },
+    }
+  );
 
   res.json({ status: "approved" });
 });

@@ -25,8 +25,14 @@ export const api = {
   getGroup: (id, userId) => req(`/groups/${id}?${qs({ userId })}`),
   search: (criteria) => req("/matches/search", "POST", criteria),
   interested: (gid, criteria) => req(`/groups/${gid}/interest`, "POST", criteria),
-  pending: (gid, userId) => req(`/groups/${gid}/requests?${qs({ userId })}`),
-  decide: (gid, rid, action, userId) => req(`/groups/${gid}/requests/${rid}/${action}`, "POST", { userId }),
+  pending: (gid, userId) => {
+    const uid = userId || session.get();
+    return req(`/groups/${gid}/requests?${qs({ userId: uid })}`);
+  },
+  decide: (gid, rid, action, userId) => {
+    const uid = userId || session.get();
+    return req(`/groups/${gid}/requests/${rid}/${action}?${qs({ userId: uid })}`, "POST", { userId: uid });
+  },
   pendingCount: (uid) => req(`/users/${uid}/pending-count`),
   hotels: (gid, checkIn, checkOut, userId) => req(`/groups/${gid}/hotels?${qs({ checkIn, checkOut, userId })}`),
   saveOption: (gid, d) => req(`/groups/${gid}/saved-options`, "POST", d),

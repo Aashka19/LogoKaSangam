@@ -50,14 +50,27 @@ router.post("/", async (req, res) => {
     throw httpError("Age must be 18 or older.");
   }
 
-  const user = await User.create({
-    name: name.trim(),
-    age: age === null || age === undefined || age === "" ? null : Number(age),
-    gender: normGender,
-    homeCity: homeCity.trim(),
-    genderPreference: normPref,
-    interests: normalizedInterests,
+  let user = await User.findOne({
+    name: { $regex: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, "i") },
   });
+
+  if (user) {
+    if (age !== null && age !== undefined && age !== "") user.age = Number(age);
+    user.gender = normGender;
+    user.homeCity = homeCity.trim();
+    user.genderPreference = normPref;
+    if (normalizedInterests.length > 0) user.interests = normalizedInterests;
+    await user.save();
+  } else {
+    user = await User.create({
+      name: name.trim(),
+      age: age === null || age === undefined || age === "" ? null : Number(age),
+      gender: normGender,
+      homeCity: homeCity.trim(),
+      genderPreference: normPref,
+      interests: normalizedInterests,
+    });
+  }
 
   res.status(201).json({
     _id: String(user._id),
