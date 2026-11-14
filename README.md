@@ -34,7 +34,7 @@ npm run seed
 
 ---
 
-## 12-Minute Demo Walkthrough
+## Demo Walkthrough
 
 ### Scenario A: Group Creator (Sarah Thomas)
 1. Navigate to http://localhost:5173.
